@@ -86,6 +86,11 @@ async function netflixAuSignup(email) {
                 '--disable-dev-shm-usage',
                 '--disable-gpu',
                 '--disable-web-security',
+                '--disable-blink-features=AutomationControlled',
+                '--no-first-run',
+                '--no-service-autorun',
+                '--password-store=basic',
+                '--use-gl=swiftshader',
             ],
         });
 
@@ -105,9 +110,9 @@ async function netflixAuSignup(email) {
         console.log(`[${maskEmail(email)}] Buka netflix.com/au/ ...`);
         await page.goto('https://www.netflix.com/au/', {
             waitUntil: 'domcontentloaded',
-            timeout: 45000,
+            timeout: 60000,
         });
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(3000);
 
         // ─── STEP 2: CARI & ISI EMAIL ─────────────────────────
         const emailSelectors = [
@@ -159,10 +164,10 @@ async function netflixAuSignup(email) {
         }
 
         await emailInput.click();
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
         await emailInput.fill(email);
         console.log(`[${maskEmail(email)}] Email diisi ✅`);
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
 
         // ─── STEP 3: KLIK "GET STARTED" ──────────────────────
         const gsSelectors = [
@@ -224,14 +229,14 @@ async function netflixAuSignup(email) {
         }
 
         // ─── STEP 4: TUNGGU REDIRECT KE SIGNUP ───────────────
-        await page.waitForTimeout(3000);
+        await page.waitForTimeout(4000);
         try {
-            await page.waitForURL('**/signup/**', { timeout: 20000 });
+            await page.waitForURL('**/signup/**', { timeout: 25000 });
             console.log(`[${maskEmail(email)}] Redirect ke signup terdeteksi`);
         } catch {
             console.log(`[${maskEmail(email)}] Tidak redirect, URL skrg: ${page.url()}`);
         }
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(3000);
 
         // ─── STEP 5: KLIK "SEND LINK" ─────────────────────────
         const sendLinkSelectors = [
@@ -315,7 +320,7 @@ async function netflixAuSignup(email) {
         // Klik Send Link
         await sendLinkBtn.click();
         console.log(`[${maskEmail(email)}] Send Link diklik ✅`);
-        await page.waitForTimeout(3000);
+        await page.waitForTimeout(4000);
 
         // ─── STEP 6: TANGKAP HASIL ────────────────────────────
         await page.screenshot({ path: ssPath, fullPage: true });
@@ -365,7 +370,9 @@ async function netflixAuSignup(email) {
         console.error(`Error: ${err.message}`, err);
 
         try {
-            if (page) await page.screenshot({ path: ssPath, fullPage: true });
+            if (page && !page.isClosed()) {
+                await page.screenshot({ path: ssPath, fullPage: true });
+            }
         } catch { /* skip */ }
 
         result.message = `❌ *Error:* \`${err.message}\``;
@@ -373,7 +380,11 @@ async function netflixAuSignup(email) {
         return result;
 
     } finally {
-        if (browser) await browser.close();
+        if (browser) {
+            try {
+                await browser.close();
+            } catch { /* skip */ }
+        }
     }
 }
 
@@ -459,11 +470,15 @@ bot.onText(/^\/gen\s+(\S+)/, async (msg, match) => {
     }
 
     // Edit pesan processing
-    await bot.editMessageText(response, {
-        chat_id: chatId,
-        message_id: statusMsg.message_id,
-        parse_mode: 'Markdown',
-    });
+    try {
+        await bot.editMessageText(response, {
+            chat_id: chatId,
+            message_id: statusMsg.message_id,
+            parse_mode: 'Markdown',
+        });
+    } catch (err) {
+        console.warn(`Gagal edit pesan: ${err.message}`);
+    }
 
     // Kirim screenshot
     if (result.screenshotPath && fs.existsSync(result.screenshotPath)) {
