@@ -96,9 +96,9 @@ async function netflixAuSignup(email) {
 
         const context = await browser.newContext({
             proxy: {
-                server: 'proxy.geonode.io:9000',
-                username: 'geonode_bEmY7bxX9V-type-residential',
-                password: '8ace6132-7e2e-4799-b8ef-f665d2417186',
+                server: 'global.rotgb.711proxy.com:10000',
+                username: 'USER213247-zone-custom-region-AU',
+                password: '61e56c',
             },
             viewport: { width: 1366, height: 768 },
             userAgent:
