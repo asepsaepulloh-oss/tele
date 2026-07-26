@@ -57,6 +57,7 @@ async function netflixAuSignup(email) {
 
     let browser;
     let page;
+    let context;
 
     try {
         browser = await chromium.launch({
@@ -72,18 +73,22 @@ async function netflixAuSignup(email) {
             ],
         });
 
-        const context = await browser.newContext({
+        context = await browser.newContext({
             // Konfigurasi Proxy 711proxy (Region Australia)
             proxy: {
-                server: 'http://global.rotgb.711proxy.com:10000', // Sesuaikan host/port standar dari dashboard 711proxy jika berbeda
+                server: 'http://global.rotgb.711proxy.com:10000',
                 username: 'USER213247-zone-custom-region-AU',
-                password: '61e56c', // Ganti dengan password asli dari dashboard 711proxy Anda
+                password: '61e56c',
             },
             viewport: { width: 1366, height: 768 },
             userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
             locale: 'en-AU',
             timezoneId: 'Australia/Sydney',
         });
+
+        // 🧹 Otomatis Hapus Cookie di awal sesi
+        await context.clearCookies();
+        console.log('🧹 Cookie berhasil dibersihkan.');
 
         page = await context.newPage();
 
@@ -95,24 +100,27 @@ async function netflixAuSignup(email) {
         });
         await sleep(3000);
 
-        // ─── STEP 2: ISI EMAIL ───────────────────────────────
-        const emailInput = page.locator('input[type="email"]').first();
+        // ─── STEP 2: ISI EMAIL (Gaya Ketik Manusia) ───────────
+        const emailInput = page.locator('input[type="email"], input[name="email"], input[placeholder*="Email"]').first();
         await emailInput.waitFor({ state: 'visible', timeout: 15000 });
         await emailInput.click();
-        await sleep(300);
-        await emailInput.fill(email);
-        console.log(`  Email diisi: ${email} ✅`);
         await sleep(500);
+        
+        // Ketik perlahan per karakter agar tidak terdeteksi bot instan
+        await emailInput.pressSequentially(email, { delay: 100 });
+        console.log(`  Email diisi: ${email} ✅`);
+        await sleep(1000);
 
-        // ─── STEP 3: KLIK "Get Started" ──────────────────────
+        // ─── STEP 3: KLIK "Continue" / "Get Started" ──────────
         const getStartedBtn = page.getByRole('button', {
-            name: /get started|mulai|start/i
+            name: /continue|get started|mulai|start/i
         }).first();
 
         await getStartedBtn.waitFor({ state: 'visible', timeout: 10000 });
+        await sleep(800); // Jeda sebelum klik
         await getStartedBtn.click();
-        console.log('  Get Started diklik ✅');
-        await sleep(3000);
+        console.log('  Tombol Continue/Get Started diklik ✅');
+        await sleep(4000);
 
         // ─── STEP 4: TUNGGU HALAMAN "We'll send a sign-up link" ──
         try {
@@ -141,7 +149,7 @@ async function netflixAuSignup(email) {
             await page.screenshot({ path: ssPath, fullPage: true });
             result.message =
                 `⚠️ Halaman yang muncul BUKAN "We'll send a sign-up link".\n` +
-                `Mungkin flow standar (pilih plan & password).\n` +
+                `Mungkin terdeteksi atau masuk flow standar.\n` +
                 `URL: \`${currentUrl}\``;
             result.redirectUrl = currentUrl;
             result.screenshotPath = ssPath;
@@ -156,7 +164,7 @@ async function netflixAuSignup(email) {
         }).first();
 
         await sendLinkBtn.waitFor({ state: 'visible', timeout: 10000 });
-        await sleep(500);
+        await sleep(800);
         await sendLinkBtn.click();
         console.log('  Tombol Send Link diklik ✅');
 
@@ -181,7 +189,7 @@ async function netflixAuSignup(email) {
                 `✅ *Berhasil — Link Terkirim!*\n\n` +
                 `📧 \`${maskEmail(email)}\`\n\n` +
                 `✔️ **Step 1:** Email diisi di Netflix AU ✅\n` +
-                `✔️ **Step 2:** Tombol **Get Started** diklik ✅\n` +
+                `✔️ **Step 2:** Tombol **Continue** diklik ✅\n` +
                 `✔️ **Step 3:** Tombol **Send Link** berhasil diklik ✅\n\n` +
                 `🔗 *Netflix telah mengirim link signup ke:*\n` +
                 `\`${email}\`\n\n` +
@@ -199,7 +207,7 @@ async function netflixAuSignup(email) {
                 `✅ *Selesai*\n\n` +
                 `📧 \`${maskEmail(email)}\`\n\n` +
                 `✔️ Email diisi ✅\n` +
-                `✔️ Get Started diklik ✅\n` +
+                `✔️ Continue diklik ✅\n` +
                 `✔️ Send Link diklik ✅\n\n` +
                 `🔗 URL akhir: \`${finalUrl}\`\n\n` +
                 `Cek email \`${maskEmail(email)}\` untuk link dari Netflix.`;
@@ -215,6 +223,9 @@ async function netflixAuSignup(email) {
         result.screenshotPath = ssPath;
         return result;
     } finally {
+        if (context) {
+            try { await context.clearCookies(); } catch { /* skip */ }
+        }
         if (browser) {
             try { await browser.close(); } catch { /* skip */ }
         }
@@ -234,7 +245,7 @@ bot.onText(/^\/start$/, async (msg) => {
         `*Alur:*\n` +
         `1️⃣ Buka \`netflix.com/au/\`\n` +
         `2️⃣ Isi email\n` +
-        `3️⃣ Klik **Get Started**\n` +
+        `3️⃣ Klik **Continue**\n` +
         `4️⃣ Klik **Send Link**\n` +
         `5️⃣ Link dikirim ke email ✅`,
         { parse_mode: 'Markdown' }
@@ -245,7 +256,7 @@ bot.onText(/^\/help$/, async (msg) => {
     await bot.sendMessage(msg.chat.id,
         `📖 *Bantuan*\n\n` +
         `\`/gen email@domain.com\` — Signup Netflix AU\n` +
-        `  → Isi email → Get Started → Send Link\n\n` +
+        `  → Isi email → Continue → Send Link\n\n` +
         `\`/start\` — Mulai bot\n` +
         `\`/help\` — Bantuan ini`,
         { parse_mode: 'Markdown' }
@@ -275,7 +286,7 @@ bot.onText(/^\/gen\s+(\S+)/, async (msg, match) => {
         `📧 Email: \`${maskEmail(email)}\`\n` +
         `🌐 Region: 🇦🇺 Netflix Australia (Residential Proxy)\n\n` +
         `1️⃣ Buka netflix.com/au/\n` +
-        `2️⃣ Isi email & klik Get Started\n` +
+        `2️⃣ Isi email & klik Continue\n` +
         `3️⃣ Klik **Send Link**\n` +
         `4️⃣ Kirim hasil...`,
         { parse_mode: 'Markdown' }
