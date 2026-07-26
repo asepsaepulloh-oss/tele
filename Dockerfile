@@ -1,16 +1,18 @@
 FROM node:20-bookworm
 
-# Install Chromium dan dependency sistem yang dibutuhkan Playwright
-RUN npx playwright install --with-deps chromium
-
 WORKDIR /app
 
-# Salin package.json dan install dependencies Node.js
+# 1. Salin package.json dan package-lock.json (jika ada) terlebih dahulu
 COPY package*.json ./
-RUN npm ci
 
-# Salin seluruh file project
+# 2. Install dependencies menggunakan npm install (lebih fleksibel jika belum ada lockfile)
+RUN npm install
+
+# 3. Install Playwright dan dependensi browser-nya
+RUN npx playwright install --with-deps chromium
+
+# 4. Salin seluruh sisa file project ke dalam container
 COPY . .
 
-# Jalankan bot
+# 5. Jalankan bot
 ENTRYPOINT ["node", "index.js"]
