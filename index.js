@@ -95,6 +95,11 @@ async function netflixAuSignup(email) {
         });
 
         const context = await browser.newContext({
+            proxy: {
+                server: 'http://gw.dataimpulse.com:10000',
+                username: '8a8d55e0c226abf48318',
+                password: '1f4670a3b30a71fd',
+            },
             viewport: { width: 1366, height: 768 },
             userAgent:
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
